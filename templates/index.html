@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Void Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #ff00ff;
+            color: #fff;
+            text-align: center;
+            margin: 0;
+            padding: 50px;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .tab, .sub-tab {
+            padding: 15px 30px;
+            background: #ffffff;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: background-color 0.3s, transform 0.2s;
+            font-size: 18px;
+        }
+        .tab:hover, .sub-tab:hover {
+            background-color: #e0e0e0;
+            transform: scale(1.05);
+        }
+        .welcome-content {
+            margin: 0;
+            padding: 0;
+        }
+        .tab-content {
+            display: none;
+            border: 1px solid #ccc;
+            padding: 20px;
+            background: #ff99ff;
+            color: #000;
+            margin-top: 20px;
+            border-radius: 5px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .active {
+            display: block;
+        }
+        .upload-section {
+            margin-top: 20px;
+        }
+        /* Réduire la taille des boutons "Upload" et "Re-train" */
+        #upload-form .tab,
+        .sub-tab {
+            padding: 10px 20px; /* Réduit la taille du bouton */
+            font-size: 16px; /* Ajuste la taille du texte */
+            background-color: #ed8f8f; /* Optionnel : couleur spécifique pour les différencier */
+        }
+        .info-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+        }
+
+        .detection-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: white;
+            border-radius: 3px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .detection-item p {
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .detection-item ul {
+            margin: 5px 0 0 0;
+            padding-left: 20px;
+        }
+
+        .detection-item li {
+            margin: 3px 0;
+        }
+        .detection-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .detection-table th, .detection-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .detection-table th {
+            background-color: #f4f4f4;
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Void Detection</h1>
+
+    <!-- Contenu d'accueil -->
+    <div id="welcome" class="welcome-content active">
+        <h2>Welcome !</h2>
+        <p>Choose an option :</p>
+        <div class="tabs">
+            <button class="tab" onclick="openTab(event, 'labelling')">Labelling</button>
+            <button class="tab" onclick="openTab(event, 'prediction')">Prediction</button>
+        </div>
+    </div>
+
+    <!-- Contenus des onglets -->
+    <div id="labelling" class="tab-content">
+        <h2>Labelise with SAM</h2>
+        <p>Upload the image you'd like to label.</p>
+
+        <!-- Section d'upload -->
+        <div class="upload-section">
+            <form id="upload-form" onsubmit="submitForm(event)" enctype="multipart/form-data">
+                <input type="file" name="image" accept="image/*" required>
+                <button type="submit" class="tab">Upload</button>
+            </form>
+
+            <!-- Message de confirmation caché par défaut -->
+            <div id="submit-message" style="display: none; color: rgb(205, 18, 68); margin-top: 10px;">Image submitted</div>
+        </div>
+
+        <!-- Onglet Re-train en bas de page -->
+        <!--div class="sub-tabs" style="justify-content: center; margin-top: 30px;">
+            <button class="sub-tab" onclick="openSubTab(event, 'retrain')">Re-train</button>
+        </div>
+        <div id="retrain" class="tab-content" style="margin-top: 20px;">
+            <h3>Re-train</h3>
+            <p>Ceci est le contenu de la section Re-train dans l'onglet Labelling.</p>
+        </div-->
+    </div>
+
+    <div id="prediction" class="tab-content">
+        <h2>Void Detection with YOLO</h2>
+        <p>Upload an image to detect voids using our trained YOLO model.</p>
+        
+        <div class="upload-section">
+            <div class="upload-container">
+                <input type="file" id="yolo-image-input" accept="image/*" style="display: none;">
+                <button id="yolo-upload-btn" class="upload-btn">Upload Image</button>
+            </div>
+            <div id="yolo-submit-message" style="display: none; color: rgb(205, 18, 68); margin-top: 10px;">
+                Image submitted
+            </div>
+        </div>
+        
+        <div id="yolo-result-container" style="display: none; margin-top: 20px;">
+            <div class="image-grid">
+                <div class="image-container">
+                    <h3>Original Image</h3>
+                    <img id="yolo-original-image" class="uploaded-image" alt="Original Image">
+                </div>
+                <div class="image-container">
+                    <h3>Detection Result</h3>
+                    <img id="yolo-result-image" class="result-image" alt="Detection Result">
+                </div>
+            </div>
+            <div id="detection-info" class="info-panel">
+                <h3>Detection Results</h3>
+                <div id="detection-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openTab(event, tabName) {
+            const contents = document.querySelectorAll('.tab-content, .welcome-content');
+            contents.forEach(content => content.classList.remove('active'));
+
+            document.getElementById(tabName).classList.add('active');
+
+            const subContents = document.querySelectorAll('.sub-content');
+            subContents.forEach(subContent => subContent.classList.remove('sub-active'));
+        }
+
+        function openSubTab(event, subTabName) {
+            const subContents = document.querySelectorAll('.sub-content');
+            subContents.forEach(subContent => subContent.classList.remove('active'));
+
+            document.getElementById(subTabName).classList.add('active');
+        }
+        // Fonction pour gérer le formulaire via AJAX
+        function submitForm(event) {
+        event.preventDefault(); // Empêche l'envoi par défaut du formulaire
+
+        const form = document.getElementById("upload-form");
+        const formData = new FormData(form);
+
+        // Envoie du formulaire via fetch
+        fetch("/upload", {
+            method: "POST",
+            body: formData,
+        })
+            .then((response) => {
+                if (response.ok) {
+                    // Affiche le message de confirmation
+                    document.getElementById("submit-message").style.display = "block";
+
+                    // Redirige vers une nouvelle page après 2 secondes
+                    setTimeout(() => {
+                        window.location.href = "/seg-page"; // Remplacez '/new-page' par l'URL de la nouvelle page
+                    }, 2000);
+                } else {
+                    console.error("Upload failed");
+                }
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+    const yoloUploadBtn = document.getElementById('yolo-upload-btn');
+    const yoloImageInput = document.getElementById('yolo-image-input');
+    const yoloSubmitMessage = document.getElementById('yolo-submit-message');
+    const yoloResultContainer = document.getElementById('yolo-result-container');
+    const yoloOriginalImage = document.getElementById('yolo-original-image');
+    const yoloResultImage = document.getElementById('yolo-result-image');
+    const detectionList = document.getElementById('detection-list');
+
+    if (yoloUploadBtn && yoloImageInput) {
+        yoloUploadBtn.addEventListener('click', () => yoloImageInput.click());
+
+        yoloImageInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const formData = new FormData();
+                formData.append('image', file);
+
+                // Upload the image
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Upload failed');
+                    return response.text();
+                })
+                .then(() => {
+                    // Show upload success message
+                    yoloSubmitMessage.style.display = 'block';
+                    yoloSubmitMessage.textContent = 'Image uploaded successfully';
+
+                    // Display original image
+                    yoloOriginalImage.src = URL.createObjectURL(file);
+                    yoloResultContainer.style.display = 'block';
+
+                    // Run YOLO prediction
+                    return fetch('/predict_yolo', {
+                        method: 'POST'
+                    });
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Server responded with status ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Response from /predict_yolo:', data); // Vérifiez ce qui est renvoyé
+                    if (!data.table) {
+                        throw new Error('The response does not contain the expected "table" key');
+                    }
+                    // Display prediction result
+                    yoloResultImage.src = data.result_image + "?" + new Date().getTime();
+
+                    // Clear previous results
+                    detectionList.innerHTML = ''; // Ensure the container is empty
+
+                    // Create and display the table
+                    const table = document.createElement('table');
+                    table.className = 'detection-table';
+
+                    // Create table header
+                    const headerRow = document.createElement('tr');
+                    ['Image', 'Component', 'Area', 'Void %', 'Max. Void %'].forEach(header => {
+                        const th = document.createElement('th');
+                        th.textContent = header;
+                        headerRow.appendChild(th);
+                    });
+                    table.appendChild(headerRow);
+
+                    // Populate table rows
+                    data.table.forEach(row => {
+                        const tr = document.createElement('tr');
+                        ['Image', 'Component', 'Area', 'Void %', 'Max. Void %'].forEach(key => {
+                            const td = document.createElement('td');
+                            td.textContent = row[key]; // Dynamically get the value
+                            tr.appendChild(td);
+                        });
+                        table.appendChild(tr);
+                    });
+
+                    // Append the table to the container
+                    detectionList.appendChild(table);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    yoloSubmitMessage.style.display = 'block';
+                    yoloSubmitMessage.textContent = 'Error processing image';
+                });
+            }
+        });
+    }
+});
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Segmentation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e4b5e4;
+            color: #fff;
+            text-align: center;
+            margin: 0;
+            padding: 50px;
+        }        
+        .point {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #points-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;  /* Ensure points don't interfere with image interaction */
+        }
+        .image-grid {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .image-container {
+            position: relative;
+            text-align: center;
+        }
+        .image-title {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .uploaded-image,
+        .result-image {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .instructions {
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #b06c8a;
+            border-radius: 5px;
+        }
+        .label-info {
+            text-align: center;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e8f4ff;
+            border-radius: 5px;
+            display: none;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        #retrain-button {
+            background-color: #2196F3;
+        }
+
+        #retrain-button:hover {
+            background-color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Image Segmentation</h1>
+        
+        <div class="instructions">
+            <p>Select class before labelling</p>
+        </div>
+
+        <div class="image-grid">
+            <div class="image-container">
+                <div class="image-title">Original Image</div>
+                <div style="position: relative;">
+                    <img id="original-image" src="{{ image_path }}" class="uploaded-image" alt="Original Image">
+                    <div id="points-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></div>
+                </div>
+            </div>
+
+            <div class="image-container">
+                <div class="image-title">Segmentation Result</div>
+                <img id="result-image" src="{{ result_path }}" class="result-image" alt="Segmentation Result">
+            </div>
+        </div>
+
+        <div id="label-info" class="label-info"></div>
+
+        <div class="controls">
+            <div>
+                <label for="class-selector" style="font-size: 16px; margin-right: 10px; color: #fff;">Select Class:</label>
+                <select id="class-selector" style="padding: 5px; font-size: 16px; border-radius: 5px;">
+                    <option value="1">Ships</option>
+                    <option value="2">Voids</option>
+                </select>
+            </div>
+            <a href="/" class="button">Back to Upload</a>
+            <button id="reset-button" class="button">Reset Segmentation</button>
+            <button id="save-retrain-button" class="button">Save & Retrain</button>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

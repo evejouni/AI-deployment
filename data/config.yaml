@@ -1,0 +1,7 @@
+names:
+- ship
+- voids
+nc: 2
+path: ./data
+train: train/images
+val: valid/images
